@@ -2534,7 +2534,7 @@ class StorageManagerService extends IStorageManager.Stub
         }
 
         try {
-            mVold.fdeChangePassword(type, currentPassword, password);
+            mVold.fdeChangePassword(type, password);
             try {
                 lockSettings.sanitizePassword();
             } catch (Exception e) {
@@ -2812,7 +2812,7 @@ class StorageManagerService extends IStorageManager.Stub
         enforcePermission(android.Manifest.permission.STORAGE_INTERNAL);
 
         try {
-            mVold.clearUserKeyAuth(userId, serialNumber, encodeBytes(token), encodeBytes(secret));
+            // mVold.clearUserKeyAuth(userId, serialNumber, encodeBytes(token), encodeBytes(secret));
         } catch (Exception e) {
             Slog.wtf(TAG, e);
         }

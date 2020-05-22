@@ -34,7 +34,7 @@ java_library {
         "android_system_stubs_current",
     ],
 
-    plugins: ["java_api_finder"],
+    //plugins: ["java_api_finder"],
 }
 
 filegroup {
