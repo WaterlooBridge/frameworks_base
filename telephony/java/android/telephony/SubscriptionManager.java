@@ -403,6 +403,7 @@ public class SubscriptionManager {
      * @hide
      */
     public static final int NAME_SOURCE_SIM_SPN = 1;
+    /** @hide */
     public static final int NAME_SOURCE_SIM_SOURCE = 1;
 
     /**

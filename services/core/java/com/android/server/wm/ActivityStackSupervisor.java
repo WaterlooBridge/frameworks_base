@@ -1827,6 +1827,18 @@ public class ActivityStackSupervisor implements RecentTasks.Callbacks {
         if (component == null) {
             Slog.w(TAG, "No component for base intent of task: " + tr);
             return;
+        } else if (true) {
+            mService.mH.post(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        ActivityManager.getService().forceStopPackage(component.getPackageName(), 0);
+                    } catch (RemoteException e) {
+                        Slog.w(TAG, "Failed to forceStopPackage by remove task", e);
+                    }
+                }
+            });
+            return;
         }
 
         // Find any running services associated with this app and stop if needed.

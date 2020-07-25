@@ -362,6 +362,7 @@ public class CarrierTextController {
                 }
             }
         }
+        allSimsMissing = false;
         // Only create "No SIM card" if no cards with CarrierName && no wifi when some sim is READY
         // This condition will also be true always when numSubs == 0
         if (allSimsMissing && !anySimReadyAndInService) {
