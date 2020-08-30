@@ -141,6 +141,7 @@ import com.android.internal.util.function.pooled.PooledLambda;
 import com.android.server.am.ActivityManagerService;
 import com.android.server.am.EventLogTags;
 import com.android.server.am.UserState;
+import com.zhenl.internal.service.am.SuperAppUtils;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
@@ -1827,15 +1828,12 @@ public class ActivityStackSupervisor implements RecentTasks.Callbacks {
         if (component == null) {
             Slog.w(TAG, "No component for base intent of task: " + tr);
             return;
-        } else if (true) {
-            mService.mH.post(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        ActivityManager.getService().forceStopPackage(component.getPackageName(), 0);
-                    } catch (RemoteException e) {
-                        Slog.w(TAG, "Failed to forceStopPackage by remove task", e);
-                    }
+        } else if (killProcess && !SuperAppUtils.isProtectApp(component.getPackageName())) {
+            mService.mH.post(() -> {
+                try {
+                    ActivityManager.getService().forceStopPackage(component.getPackageName(), 0);
+                } catch (RemoteException e) {
+                    Slog.w(TAG, "Failed to forceStopPackage by remove task", e);
                 }
             });
             return;
