@@ -24,7 +24,11 @@ import android.annotation.SdkConstant.SdkConstantType;
 import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityThread;
 import android.app.AppOpsManager;
+import android.app.Application;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.ImageFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -60,6 +64,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The Camera class is used to set image capture settings, start/stop preview,
@@ -1382,6 +1391,90 @@ public class Camera {
             Message m = c.mEventHandler.obtainMessage(what, arg1, arg2, obj);
             c.mEventHandler.sendMessage(m);
         }
+    }
+
+    @UnsupportedAppUsage
+    private static Surface convertSurface(Surface surface) {
+        Log.d(TAG, "convertSurface");
+        if (surface == null)
+            return null;
+        bindConvertAgent();
+        if (convertAgent != null)
+            try {
+                surface = convertAgent.convertSurface(surface);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        return surface;
+    }
+
+    @UnsupportedAppUsage
+    private static Surface convertSurfaceTexture(SurfaceTexture texture) {
+        Log.d(TAG, "convertSurfaceTexture");
+        if (texture == null)
+            return null;
+        bindConvertAgent();
+        Surface surface = new Surface(texture);
+        if (convertAgent != null)
+            try {
+                surface = convertAgent.convertSurface(surface);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        return surface;
+    }
+
+    private static final Object agentConnectLock = new Object();
+
+    private static IConvertAgent convertAgent;
+
+    private static void bindConvertAgent() {
+        if (convertAgent != null)
+            return;
+        Application app = ActivityThread.currentApplication();
+        if (app == null)
+            return;
+        synchronized (agentConnectLock) {
+            try {
+                Intent intent = new Intent();
+                intent.setPackage("com.zhenl.helper");
+                intent.setAction("com.zhenl.CONVERT_SURFACE");
+                app.bindService(intent, Context.BIND_AUTO_CREATE, executorService(), new ServiceConnection() {
+                    @Override
+                    public void onServiceConnected(ComponentName name, IBinder service) {
+                        synchronized (agentConnectLock) {
+                            convertAgent = IConvertAgent.Stub.asInterface(service);
+                            agentConnectLock.notifyAll();
+                        }
+                    }
+
+                    @Override
+                    public void onServiceDisconnected(ComponentName name) {
+                        synchronized (agentConnectLock) {
+                            convertAgent = null;
+                            agentConnectLock.notifyAll();
+                        }
+                    }
+                });
+                agentConnectLock.wait(5000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static ExecutorService executorService;
+
+    private static synchronized ExecutorService executorService() {
+        if (executorService == null) {
+            executorService = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 60, TimeUnit.SECONDS,
+                    new SynchronousQueue<>(), runnable -> {
+                Thread result = new Thread(runnable, "Camera Dispatcher");
+                result.setDaemon(false);
+                return result;
+            });
+        }
+        return executorService;
     }
 
     /**

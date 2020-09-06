@@ -820,7 +820,8 @@ public final class CameraManager {
      * @return {@code false} if the legacy shim needs to be used, {@code true} otherwise.
      */
     private boolean supportsCamera2ApiLocked(String cameraId) {
-        return supportsCameraApiLocked(cameraId, API_VERSION_2);
+        // return supportsCameraApiLocked(cameraId, API_VERSION_2);
+        return false;
     }
 
     /**

@@ -59,6 +59,8 @@ struct fields_t {
     jfieldID    point_x;
     jfieldID    point_y;
     jmethodID   post_event;
+    jmethodID   convert_surface;
+    jmethodID   convert_surface_texture;
     jmethodID   rect_constructor;
     jmethodID   face_constructor;
     jmethodID   point_constructor;
@@ -771,6 +773,8 @@ static void android_hardware_Camera_setPreviewSurface(JNIEnv *env, jobject thiz,
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
+    jSurface = env->CallStaticObjectMethod(env->GetObjectClass(thiz), fields.convert_surface, jSurface);
+
     sp<IGraphicBufferProducer> gbp;
     sp<Surface> surface;
     if (jSurface) {
@@ -792,15 +796,15 @@ static void android_hardware_Camera_setPreviewTexture(JNIEnv *env,
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
-    sp<IGraphicBufferProducer> producer = NULL;
-    if (jSurfaceTexture != NULL) {
-        producer = SurfaceTexture_getProducer(env, jSurfaceTexture);
-        if (producer == NULL) {
-            jniThrowException(env, "java/lang/IllegalArgumentException",
-                    "SurfaceTexture already released in setPreviewTexture");
-            return;
-        }
+    jobject jSurface = env->CallStaticObjectMethod(env->GetObjectClass(thiz), fields.convert_surface_texture, jSurfaceTexture);
 
+    sp<IGraphicBufferProducer> producer;
+    sp<Surface> surface;
+    if (jSurface) {
+        surface = android_view_Surface_getSurface(env, jSurface);
+        if (surface != NULL) {
+            producer = surface->getIGraphicBufferProducer();
+        }
     }
 
     if (camera->setPreviewTarget(producer) != NO_ERROR) {
@@ -1290,6 +1294,10 @@ int register_android_hardware_Camera(JNIEnv *env)
     jclass clazz = FindClassOrDie(env, "android/hardware/Camera");
     fields.post_event = GetStaticMethodIDOrDie(env, clazz, "postEventFromNative",
                                                "(Ljava/lang/Object;IIILjava/lang/Object;)V");
+    fields.convert_surface = GetStaticMethodIDOrDie(env, clazz, "convertSurface",
+                                               "(Landroid/view/Surface;)Landroid/view/Surface;");
+    fields.convert_surface_texture = GetStaticMethodIDOrDie(env, clazz, "convertSurfaceTexture",
+                                               "(Landroid/graphics/SurfaceTexture;)Landroid/view/Surface;");
 
     clazz = FindClassOrDie(env, "android/graphics/Rect");
     fields.rect_constructor = GetMethodIDOrDie(env, clazz, "<init>", "()V");
