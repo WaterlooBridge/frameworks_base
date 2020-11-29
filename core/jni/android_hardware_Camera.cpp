@@ -773,7 +773,10 @@ static void android_hardware_Camera_setPreviewSurface(JNIEnv *env, jobject thiz,
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
-    jSurface = env->CallStaticObjectMethod(env->GetObjectClass(thiz), fields.convert_surface, jSurface);
+    char value[PROPERTY_VALUE_MAX];
+    property_get("persist.sys.live.mode", value, "0");
+    if (strncmp(value, "1", 2) == 0)
+        jSurface = env->CallStaticObjectMethod(env->GetObjectClass(thiz), fields.convert_surface, jSurface);
 
     sp<IGraphicBufferProducer> gbp;
     sp<Surface> surface;
@@ -796,16 +799,27 @@ static void android_hardware_Camera_setPreviewTexture(JNIEnv *env,
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
-    jobject jSurface = env->CallStaticObjectMethod(env->GetObjectClass(thiz), fields.convert_surface_texture, jSurfaceTexture);
+    sp<IGraphicBufferProducer> producer = NULL;
 
-    sp<IGraphicBufferProducer> producer;
-    sp<Surface> surface;
-    if (jSurface) {
-        surface = android_view_Surface_getSurface(env, jSurface);
-        if (surface != NULL) {
-            producer = surface->getIGraphicBufferProducer();
+    char value[PROPERTY_VALUE_MAX];
+    property_get("persist.sys.live.mode", value, "0");
+    if (strncmp(value, "1", 2) == 0) {
+        jobject jSurface = env->CallStaticObjectMethod(env->GetObjectClass(thiz), fields.convert_surface_texture, jSurfaceTexture);
+        if (jSurface) {
+            sp<Surface> surface = android_view_Surface_getSurface(env, jSurface);
+            if (surface != NULL) {
+                producer = surface->getIGraphicBufferProducer();
+            }
+        }
+    } else if (jSurfaceTexture != NULL) {
+        producer = SurfaceTexture_getProducer(env, jSurfaceTexture);
+        if (producer == NULL) {
+            jniThrowException(env, "java/lang/IllegalArgumentException",
+                    "SurfaceTexture already released in setPreviewTexture");
+            return;
         }
     }
+
 
     if (camera->setPreviewTarget(producer) != NO_ERROR) {
         jniThrowException(env, "java/io/IOException",
